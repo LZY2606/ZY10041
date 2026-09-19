@@ -158,7 +158,8 @@ class MoshiSealedSymbolProcessorProviderTest {
 
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
-    assertThat(result.messages).contains("Moshi-sealed subtypes cannot be generic.")
+    assertThat(result.messages).contains("MOSHIX_SEALED_GENERIC_SUBTYPE")
+    assertThat(result.messages).contains("Moshi-sealed subtypes cannot be generic")
   }
 
   @Test
@@ -198,7 +199,7 @@ class MoshiSealedSymbolProcessorProviderTest {
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
     assertThat(result.messages)
-      .contains("Only one of @DefaultNull or @FallbackJsonAdapter can be used at a time")
+      .contains("Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter can be used at a time")
   }
 
   @Test
@@ -226,7 +227,9 @@ class MoshiSealedSymbolProcessorProviderTest {
 
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
-    assertThat(result.messages).contains("Cannot have both @DefaultNull and @DefaultObject")
+    assertThat(result.messages).contains("MOSHIX_SEALED_CONFLICTING_DEFAULTS")
+    assertThat(result.messages)
+      .contains("Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter can be used at a time")
   }
 
   @Test
@@ -268,7 +271,7 @@ class MoshiSealedSymbolProcessorProviderTest {
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
     assertThat(result.messages)
       .contains(
-        "Only one of @DefaultObject, @DefaultNull, or @FallbackJsonAdapter can be used at a time"
+        "Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter can be used at a time"
       )
   }
 

@@ -12,6 +12,10 @@ tasks.compileTestKotlin {
   }
 }
 
+tasks.test {
+  testLogging { events("PASSED", "FAILED", "SKIPPED") }
+}
+
 dependencies {
   api(libs.moshi)
   implementation(libs.kotlin.metadata)

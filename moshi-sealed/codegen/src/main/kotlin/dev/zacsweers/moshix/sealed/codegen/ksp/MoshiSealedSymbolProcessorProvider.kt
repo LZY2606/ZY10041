@@ -3,15 +3,12 @@
 package dev.zacsweers.moshix.sealed.codegen.ksp
 
 import com.google.auto.service.AutoService
-import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isVisibleFrom
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
-import com.google.devtools.ksp.symbol.ClassKind.OBJECT
 import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSType
@@ -29,6 +26,10 @@ import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.JsonClass
 import dev.zacsweers.moshix.sealed.codegen.ksp.MoshiSealedSymbolProcessorProvider.Companion.OPTION_GENERATED
 import dev.zacsweers.moshix.sealed.runtime.internal.ObjectJsonAdapter
+import dev.zacsweers.moshix.sealed.runtime.model.SealedClassProbe
+import dev.zacsweers.moshix.sealed.runtime.model.SealedFallback
+import dev.zacsweers.moshix.sealed.runtime.model.SealedModelResult
+import dev.zacsweers.moshix.sealed.runtime.model.SealedModelValidator
 
 @AutoService(SymbolProcessorProvider::class)
 public class MoshiSealedSymbolProcessorProvider : SymbolProcessorProvider {
@@ -130,39 +131,12 @@ private class MoshiSealedSymbolProcessor(environment: SymbolProcessorEnvironment
         return@forEach
       }
 
-      val labelKey = type.findAnnotationWithType(symbols.jsonClass)?.labelKey() ?: return@forEach
+      val labelKey =
+        type.findAnnotationWithType(symbols.jsonClass)?.labelKey() ?: return@forEach
 
       if (Modifier.SEALED !in type.modifiers) {
         logger.error("Must be a sealed class!", type)
         return@forEach
-      }
-
-      // If this is a nested sealed type of a moshi-sealed parent, defer to the parent
-      val sealedParent =
-        if (type.hasAnnotation(symbols.nestedSealed)) {
-          type.getAllSuperTypes().firstNotNullOfOrNull { supertype ->
-            // Weird that we need to check the classifier ourselves
-            supertype.declaration.findAnnotationWithType(symbols.jsonClass)?.labelKey()?.let {
-              supertype to it
-            }
-          }
-            ?: run {
-              logger.error("No JsonClass-annotated sealed supertype found for $type", type)
-              return@forEach
-            }
-        } else {
-          null
-        }
-
-      sealedParent?.let { (_, parentLabelKey) ->
-        if (parentLabelKey == labelKey) {
-          logger.error(
-            "@NestedSealed-annotated subtype $type is inappropriately annotated with @JsonClass(generator = " +
-              "\"sealed:$labelKey\").",
-            type,
-          )
-          return@forEach
-        }
       }
 
       createType(type, labelKey, generatedAnnotation, symbols)
@@ -171,33 +145,16 @@ private class MoshiSealedSymbolProcessor(environment: SymbolProcessorEnvironment
     return emptyList()
   }
 
-  private fun KSAnnotation.labelKey(checkGenerateAdapter: Boolean = true): String? {
-    if (checkGenerateAdapter && !getMember<Boolean>("generateAdapter")) {
-      return null
-    }
-
-    val generator = getMember<String>("generator")
-
-    if (!generator.startsWith("sealed:")) {
-      return null
-    }
-
-    return generator.removePrefix("sealed:")
-  }
-
   private fun createType(
     type: KSClassDeclaration,
     labelKey: String,
     generatedAnnotation: AnnotationSpec?,
     symbols: MoshiSealedSymbols,
   ) {
-    val useDefaultNull = type.hasAnnotation(symbols.defaultNull)
+    // Backend-specific checks: the fallback adapter's constructor must be visible and can only
+    // have an optional Moshi parameter.
+    val fallbackAdapterStrategy: FallbackStrategy.FallbackAdapter?
     val fallbackAdapterAnnotation = type.findAnnotationWithType(symbols.fallbackJsonAdapter)
-    if (useDefaultNull && (fallbackAdapterAnnotation != null)) {
-      logger.error("Only one of @DefaultNull or @FallbackJsonAdapter can be used at a time", type)
-      return
-    }
-    var fallbackStrategy: FallbackStrategy? = null
     if (fallbackAdapterAnnotation != null) {
       val adapterType = (fallbackAdapterAnnotation.arguments[0].value as KSType)
       // TODO can we check adapter type is valid? Compiler will check it for us
@@ -238,51 +195,60 @@ private class MoshiSealedSymbolProcessor(environment: SymbolProcessorEnvironment
             return
           }
         }
-      fallbackStrategy =
+      fallbackAdapterStrategy =
         FallbackStrategy.FallbackAdapter(
           className = adapterType.toClassName(),
           hasMoshiParam = hasMoshiParam,
         )
-    } else if (useDefaultNull) {
-      fallbackStrategy = FallbackStrategy.Null
+    } else {
+      fallbackAdapterStrategy = null
     }
 
-    val objectAdapters = mutableListOf<CodeBlock>()
-    val seenLabels = mutableMapOf<String, ClassName>()
-    val originatingKSFiles = mutableSetOf<KSFile>()
-    type.containingFile?.let(originatingKSFiles::add)
-    val sealedSubtypes =
-      type.getSealedSubclasses().flatMapTo(LinkedHashSet()) { subtype ->
-        val className = subtype.toClassName()
-        val isObject = subtype.classKind == OBJECT
-        if (isObject && subtype.hasAnnotation(symbols.defaultObject)) {
-          if (useDefaultNull) {
-            // Print both for reference
-            logger.error(
-              """
-                Cannot have both @DefaultNull and @DefaultObject. @DefaultObject type: $type
-                Cannot have both @DefaultNull and @DefaultObject. @DefaultNull type: $subtype
-              """
-                .trimIndent(),
-              subtype,
-            )
-            return
-          } else {
-            return@flatMapTo sequenceOf(Subtype.ObjectType(className))
+    val rootProbe = KspSealedClassProbe(type, symbols)
+    val model =
+      when (val result = SealedModelValidator.validate(rootProbe, labelKey)) {
+        is SealedModelResult.Invalid -> {
+          for (error in result.errors) {
+            logger.error(error.render(), error.nodes.firstOrNull()?.handle ?: type)
           }
-        } else {
-          walkTypeLabels(
-            rootType = type,
-            subtype = subtype,
-            symbols = symbols,
-            labelKey = labelKey,
-            seenLabels = seenLabels,
-            objectAdapters = objectAdapters,
-            originatingKSFiles = originatingKSFiles,
-            className = className,
-          )
+          return
         }
+        is SealedModelResult.Valid -> result.model
       }
+
+    val fallbackStrategy: FallbackStrategy? =
+      when (model.fallback) {
+        SealedFallback.NullValue -> FallbackStrategy.Null
+        SealedFallback.FallbackAdapter -> fallbackAdapterStrategy
+        else -> null
+      }
+
+    val objectAdapters = mutableListOf<CodeBlock>()
+    val sealedSubtypes = LinkedHashSet<Subtype>()
+    for (labeledSubtype in model.labeledSubtypes) {
+      val className = labeledSubtype.probe.handle.toClassName()
+      sealedSubtypes += Subtype.ClassType(className, labeledSubtype.labels)
+      if (labeledSubtype.isObject) {
+        objectAdapters.add(
+          CodeBlock.of(
+            ".add(%1T::class.java,·%2T(%1T))",
+            className,
+            ObjectJsonAdapter::class.asClassName(),
+          )
+        )
+      }
+    }
+    when (val fallback = model.fallback) {
+      is SealedFallback.DefaultObject -> {
+        sealedSubtypes += Subtype.ObjectType(fallback.probe.handle.toClassName())
+      }
+      else -> {
+        // Nothing to add
+      }
+    }
+
+    val originatingKSFiles = mutableSetOf<KSFile>()
+    collectOriginatingFiles(rootProbe, originatingKSFiles)
 
     createType(
         targetType = type.toClassName(),
@@ -302,157 +268,20 @@ private class MoshiSealedSymbolProcessor(environment: SymbolProcessorEnvironment
       ?.writeTo(codeGenerator, aggregating = true)
   }
 
-  private fun walkTypeLabels(
-    rootType: KSClassDeclaration,
-    subtype: KSClassDeclaration,
-    symbols: MoshiSealedSymbols,
-    labelKey: String,
-    seenLabels: MutableMap<String, ClassName>,
-    objectAdapters: MutableList<CodeBlock>,
+  /**
+   * Collects the containing files of every node the validator walks, mirroring its traversal, so
+   * that generated code declares the right originating elements for incremental processing.
+   */
+  private fun collectOriginatingFiles(
+    probe: SealedClassProbe<KSClassDeclaration>,
     originatingKSFiles: MutableSet<KSFile>,
-    className: ClassName = subtype.toClassName(),
-  ): Sequence<Subtype> {
-    subtype.containingFile?.let(originatingKSFiles::add)
-    // If it's sealed, check if it's inheriting from our existing type or a separate/new branching
-    // off point
-    if (Modifier.SEALED in subtype.modifiers) {
-      val nestedLabelKey =
-        subtype.findAnnotationWithType(symbols.jsonClass)?.labelKey(checkGenerateAdapter = false)
-      if (nestedLabelKey != null) {
-        // Redundant case
-        if (labelKey == nestedLabelKey) {
-          error(
-            "Sealed subtype $subtype is redundantly annotated with @JsonClass(generator = " +
-              "\"sealed:$nestedLabelKey\")."
-          )
-        }
-      }
-
-      if (subtype.findAnnotationWithType(symbols.typeLabel) != null) {
-        // It's a different type, allow it to be used as a label and branch off from here.
-        val classType =
-          addLabelKeyForType(
-            rootType,
-            subtype,
-            symbols,
-            seenLabels,
-            objectAdapters,
-            className,
-            skipJsonClassCheck = true,
-          )
-        return classType?.let { sequenceOf(it) } ?: emptySequence()
-      } else {
-        // Add the file as an originating element as it's indirectly participating in adapter
-        // generation
-        originatingKSFiles += subtype.containingFile!!
-        // Recurse, inheriting the top type
-        return subtype.getSealedSubclasses().flatMap {
-          walkTypeLabels(
-            rootType = rootType,
-            subtype = it,
-            symbols = symbols,
-            labelKey = labelKey,
-            seenLabels = seenLabels,
-            objectAdapters = objectAdapters,
-            originatingKSFiles = originatingKSFiles,
-          )
-        }
-      }
-    } else {
-      val classType =
-        addLabelKeyForType(
-          rootType = rootType,
-          subtype = subtype,
-          symbols = symbols,
-          seenLabels = seenLabels,
-          objectAdapters = objectAdapters,
-          className = className,
-        )
-      return classType?.let { sequenceOf(it) } ?: emptySequence()
+  ) {
+    probe.handle.containingFile?.let(originatingKSFiles::add)
+    if (probe.hasDefaultObject) return
+    if (probe.isSealed && probe.typeLabel == null) {
+      // Recurse, inheriting the top type
+      probe.sealedSubtypes.forEach { collectOriginatingFiles(it, originatingKSFiles) }
     }
-  }
-
-  private fun addLabelKeyForType(
-    rootType: KSClassDeclaration,
-    subtype: KSClassDeclaration,
-    symbols: MoshiSealedSymbols,
-    seenLabels: MutableMap<String, ClassName>,
-    objectAdapters: MutableList<CodeBlock>,
-    className: ClassName = subtype.toClassName(),
-    skipJsonClassCheck: Boolean = false,
-  ): Subtype? {
-    // Regular subtype, read its label
-    val labelAnnotation =
-      subtype.findAnnotationWithType(symbols.typeLabel)
-        ?: run {
-          logger.error("Missing @TypeLabel", subtype)
-          return null
-        }
-
-    if (subtype.typeParameters.isNotEmpty()) {
-      logger.error("Moshi-sealed subtypes cannot be generic.", subtype)
-      return null
-    }
-
-    val labels = mutableListOf<String>()
-
-    val mainLabel =
-      labelAnnotation.arguments.find { it.name?.getShortName() == "label" }?.value as? String
-        ?: run {
-          logger.error("No label member for TypeLabel annotation!")
-          return null
-        }
-
-    seenLabels.put(mainLabel, className)?.let { prev ->
-      if (prev != className) {
-        logger.error("Duplicate label '$mainLabel' defined for $className and $prev.", rootType)
-        return null
-      }
-    }
-
-    labels += mainLabel
-
-    // https://github.com/google/ksp/issues/134
-    @Suppress("UNCHECKED_CAST")
-    val alternates =
-      labelAnnotation.arguments.find { it.name?.getShortName() == "alternateLabels" }?.value
-        as? List<String> // arrays are lists in KSP https://github.com/google/ksp/issues/135
-      ?: emptyList() // ksp ignores undefined args
-
-    for (alternate in alternates) {
-      seenLabels.put(alternate, className)?.let { prev ->
-        logger.error(
-          "Duplicate alternate label '$alternate' defined for $className and $prev.",
-          rootType,
-        )
-        return null
-      }
-    }
-
-    if (!skipJsonClassCheck) {
-      val labelKey = subtype.findAnnotationWithType(symbols.jsonClass)?.labelKey()
-      if (labelKey != null) {
-        logger.error(
-          "Sealed subtype $subtype is annotated with @JsonClass(generator = \"sealed:$labelKey\") and @TypeLabel.",
-          subtype,
-        )
-        return null
-      }
-    }
-
-    labels += alternates
-
-    if (subtype.classKind == OBJECT) {
-      objectAdapters.add(
-        CodeBlock.of(
-          ".add(%1T::class.java,·%2T(%1T))",
-          className,
-          ObjectJsonAdapter::class.asClassName(),
-        )
-      )
-    }
-
-    return Subtype.ClassType(className, labels)
   }
 }
 

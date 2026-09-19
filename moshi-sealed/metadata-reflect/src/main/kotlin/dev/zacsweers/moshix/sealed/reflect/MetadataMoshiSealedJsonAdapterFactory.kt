@@ -14,6 +14,12 @@ import dev.zacsweers.moshix.sealed.annotations.NestedSealed
 import dev.zacsweers.moshix.sealed.annotations.TypeLabel
 import dev.zacsweers.moshix.sealed.runtime.internal.ObjectJsonAdapter
 import dev.zacsweers.moshix.sealed.runtime.internal.Util.fallbackAdapter
+import dev.zacsweers.moshix.sealed.runtime.model.SealedClassProbe
+import dev.zacsweers.moshix.sealed.runtime.model.SealedFallback
+import dev.zacsweers.moshix.sealed.runtime.model.SealedModelResult
+import dev.zacsweers.moshix.sealed.runtime.model.SealedModelValidator
+import dev.zacsweers.moshix.sealed.runtime.model.TypeLabelData
+import dev.zacsweers.moshix.sealed.runtime.model.sealedLabelKey
 import java.lang.reflect.Type
 import kotlin.metadata.ClassKind
 import kotlin.metadata.ClassName
@@ -38,71 +44,63 @@ public class MetadataMoshiSealedJsonAdapterFactory : JsonAdapter.Factory {
     if (!rawType.isAnnotationPresent(KOTLIN_METADATA)) return null
 
     rawType.getAnnotation(JsonClass::class.java)?.let { jsonClass ->
-      val labelKey = jsonClass.labelKey() ?: return null
+      val labelKey = sealedLabelKey(jsonClass.generator) ?: return null
       val kmClass = checkNotNull(rawType.header()?.toKmClass())
 
       if (kmClass.modality != Modality.SEALED) {
         return null
       }
 
-      // If this is a nested sealed type of a moshi-sealed parent, defer to the parent
-      if (rawType.getAnnotation(NestedSealed::class.java) != null) {
-        val supertypes: List<Class<*>> = listOfNotNull(rawType.superclass, *rawType.interfaces)
-        val parentLabelKey =
-          supertypes.firstNotNullOfOrNull { supertype ->
-            supertype.getAnnotation(JsonClass::class.java)?.labelKey()
-          } ?: error("No JsonClass-annotated sealed supertype found for $rawType")
-        check(parentLabelKey != labelKey) {
-          "@NestedSealed-annotated subtype $rawType is inappropriately annotated with @JsonClass(generator = \"sealed:$labelKey\")."
+      val result =
+        SealedModelValidator.validate(MetadataSealedClassProbe(rawType, kmClass), labelKey)
+      val model =
+        when (result) {
+          is SealedModelResult.Invalid -> {
+            throw IllegalStateException(
+              "Invalid sealed model for $rawType:\n" +
+                result.errors.joinToString("\n") { it.render() }
+            )
+          }
+          is SealedModelResult.Valid -> result.model
         }
-      }
 
       // Pull out the default instance as necessary
       // Possible cases:
       //   - No default (error if missing at runtime)
       //   - Null default
       //   - Object default
+      //   - Fallback adapter
       var defaultObjectInstance: Any? = UNSET
-      if (rawType.isAnnotationPresent(DefaultNull::class.java)) {
-        defaultObjectInstance = null
-      }
       var fallbackAdapter: JsonAdapter<Any>? = null
-      val fallbackJsonAdapterAnnotation = rawType.getAnnotation(FallbackJsonAdapter::class.java)
-      if (fallbackJsonAdapterAnnotation != null) {
-        val clazz = fallbackJsonAdapterAnnotation.value
-        // Find a constructor we can use
-        fallbackAdapter = moshi.fallbackAdapter(clazz.java)
+      when (val fallback = model.fallback) {
+        is SealedFallback.DefaultObject -> {
+          defaultObjectInstance =
+            checkNotNull(fallback.probe.objectInstance) {
+              "Must be an object type to use as a @DefaultObject: ${fallback.probe.displayName}"
+            }
+        }
+        SealedFallback.NullValue -> {
+          defaultObjectInstance = null
+        }
+        SealedFallback.FallbackAdapter -> {
+          val clazz =
+            checkNotNull(rawType.getAnnotation(FallbackJsonAdapter::class.java)).value
+          fallbackAdapter = moshi.fallbackAdapter(clazz.java)
+        }
+        SealedFallback.None -> {
+          // No default
+        }
       }
 
       val objectSubtypes = mutableMapOf<Class<*>, Any>()
       val labels = mutableMapOf<String, Class<*>>()
-      for (sealedSubclassName in kmClass.sealedSubclasses) {
-        val sealedSubclass = sealedSubclassName.toJavaClass()
-        val kmSealedSubclass = checkNotNull(sealedSubclass.header()?.toKmClass())
-        val isObject = kmSealedSubclass.kind == ClassKind.OBJECT
-
-        val isAnnotatedDefaultObject = sealedSubclass.isAnnotationPresent(DefaultObject::class.java)
-        if (isAnnotatedDefaultObject) {
-          if (!isObject) {
-            error("Must be an object type to use as a @DefaultObject: $sealedSubclass")
-          } else if (defaultObjectInstance === UNSET && fallbackAdapter == null) {
-            defaultObjectInstance = sealedSubclass.objectInstance()
-          } else {
-            if (defaultObjectInstance == null || fallbackAdapter == null) {
-              error(
-                "Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter: $sealedSubclass"
-              )
-            } else {
-              error(
-                "Can only have one @DefaultObject: $sealedSubclass and ${defaultObjectInstance.javaClass} are both annotated"
-              )
-            }
-          }
-        } else {
-          walkTypeLabels(sealedSubclass, labelKey, labels, objectSubtypes)
-          check(sealedSubclass.typeParameters.isEmpty()) {
-            "Moshi-sealed subtypes cannot be generic: $sealedSubclass"
-          }
+      for (labeledSubtype in model.labeledSubtypes) {
+        val subtypeClass = labeledSubtype.probe.handle
+        for (label in labeledSubtype.labels) {
+          labels[label] = subtypeClass
+        }
+        if (labeledSubtype.isObject) {
+          objectSubtypes[subtypeClass] = checkNotNull(labeledSubtype.probe.objectInstance)
         }
       }
 
@@ -142,6 +140,67 @@ public class MetadataMoshiSealedJsonAdapterFactory : JsonAdapter.Factory {
   }
 }
 
+/** A [SealedClassProbe] backed by `kotlin-metadata` and Java reflection. */
+private class MetadataSealedClassProbe(
+  private val clazz: Class<*>,
+  private val kmClass: KmClass,
+) : SealedClassProbe<Class<*>> {
+  override val handle: Class<*>
+    get() = clazz
+
+  override val identity: Any
+    get() = clazz
+
+  override val displayName: String
+    get() = clazz.toString()
+
+  override val isSealed: Boolean
+    get() = kmClass.modality == Modality.SEALED
+
+  override val isObject: Boolean
+    get() = kmClass.kind == ClassKind.OBJECT
+
+  override val objectInstance: Any?
+    get() = if (isObject) clazz.objectInstance() else null
+
+  override val hasTypeParameters: Boolean
+    get() = clazz.typeParameters.isNotEmpty()
+
+  override val jsonClassLabelKey: String?
+    get() = clazz.getAnnotation(JsonClass::class.java)?.let { sealedLabelKey(it.generator) }
+
+  override val hasNestedSealed: Boolean
+    get() = clazz.isAnnotationPresent(NestedSealed::class.java)
+
+  override val hasDefaultNull: Boolean
+    get() = clazz.isAnnotationPresent(DefaultNull::class.java)
+
+  override val hasDefaultObject: Boolean
+    get() = clazz.isAnnotationPresent(DefaultObject::class.java)
+
+  override val hasFallbackJsonAdapter: Boolean
+    get() = clazz.isAnnotationPresent(FallbackJsonAdapter::class.java)
+
+  override val typeLabel: TypeLabelData?
+    get() =
+      clazz.getAnnotation(TypeLabel::class.java)?.let {
+        TypeLabelData(it.label, it.alternateLabels.toList())
+      }
+
+  override val sealedSubtypes: List<SealedClassProbe<Class<*>>>
+    get() =
+      kmClass.sealedSubclasses.map { subclassName ->
+        val subclass = subclassName.toJavaClass()
+        MetadataSealedClassProbe(subclass, checkNotNull(subclass.header()?.toKmClass()))
+      }
+
+  override val supertypeLabelKeys: List<String>
+    get() =
+      listOfNotNull(clazz.superclass, *clazz.interfaces).mapNotNull { supertype ->
+        supertype.getAnnotation(JsonClass::class.java)?.let { sealedLabelKey(it.generator) }
+      }
+}
+
 private fun Class<*>.header(): Metadata? {
   val metadata = getAnnotation(KOTLIN_METADATA) ?: return null
   return with(metadata) {
@@ -165,93 +224,10 @@ private fun Metadata.toKmClass(): KmClass? {
   return classMetadata.kmClass
 }
 
-private fun JsonClass.labelKey(): String? =
-  if (generator.startsWith("sealed:")) {
-    generator.removePrefix("sealed:")
-  } else {
-    null
-  }
-
 private fun ClassName.toJavaClass(): Class<*> {
   return Class.forName(replace(".", "$").replace("/", "."))
 }
 
 private fun Class<*>.objectInstance(): Any {
   return getDeclaredField("INSTANCE").get(null)
-}
-
-private fun walkTypeLabels(
-  subtype: Class<*>,
-  labelKey: String,
-  labels: MutableMap<String, Class<*>>,
-  objectSubtypes: MutableMap<Class<*>, Any>,
-) {
-  // If it's sealed, check if it's inheriting from our existing type or a separate/new branching off
-  // point
-  val subtypeKmClass =
-    subtype.header()?.toKmClass()
-      ?: error("Cannot decode Metadata for $subtype. Is it not a Kotlin class?")
-  if (subtypeKmClass.modality == Modality.SEALED) {
-    val jsonClass = subtype.getAnnotation(JsonClass::class.java)
-    if (jsonClass != null && jsonClass.generator.startsWith("sealed:")) {
-      val sealedTypeDiscriminator = jsonClass.generator.removePrefix("sealed:")
-      // Redundant case
-      if (labelKey == sealedTypeDiscriminator) {
-        error(
-          "Sealed subtype $subtype is redundantly annotated with @JsonClass(generator = " +
-            "\"sealed:$sealedTypeDiscriminator\")."
-        )
-      }
-    }
-
-    if (subtype.isAnnotationPresent(TypeLabel::class.java)) {
-      // It's a different type, allow it to be used as a label and branch off from here.
-      addLabelKeyForType(subtype, subtypeKmClass, labels, objectSubtypes, skipJsonClassCheck = true)
-    } else {
-      // Recurse, inheriting the top type
-      for (nested in subtypeKmClass.sealedSubclasses.map { it.toJavaClass() }) {
-        walkTypeLabels(nested, labelKey, labels, objectSubtypes)
-      }
-    }
-  } else {
-    addLabelKeyForType(
-      subtype,
-      subtypeKmClass,
-      labels,
-      objectSubtypes,
-      skipJsonClassCheck = subtypeKmClass.kind == ClassKind.OBJECT,
-    )
-  }
-}
-
-private fun addLabelKeyForType(
-  sealedSubclass: Class<*>,
-  subtypeKmClass: KmClass,
-  labels: MutableMap<String, Class<*>>,
-  objectSubtypes: MutableMap<Class<*>, Any>,
-  skipJsonClassCheck: Boolean = false,
-) {
-  // Regular subtype, read its label
-  val labelAnnotation =
-    checkNotNull(sealedSubclass.getAnnotation(TypeLabel::class.java)) {
-      "Sealed subtypes must be annotated with @TypeLabel to define their label $sealedSubclass"
-    }
-
-  val label = labelAnnotation.label
-  labels.put(label, sealedSubclass)?.let { prev ->
-    error("Duplicate label '$label' defined for $sealedSubclass and $prev.")
-  }
-  for (alternate in labelAnnotation.alternateLabels) {
-    labels.put(alternate, sealedSubclass)?.let { prev ->
-      error("Duplicate alternate label '$alternate' defined for $sealedSubclass and $prev.")
-    }
-  }
-  if (subtypeKmClass.kind == ClassKind.OBJECT) {
-    objectSubtypes[sealedSubclass] = sealedSubclass.objectInstance()
-  }
-  check(
-    skipJsonClassCheck || sealedSubclass.getAnnotation(JsonClass::class.java)?.labelKey() == null
-  ) {
-    "Sealed subtype $sealedSubclass is annotated with @JsonClass(generator = \"sealed:...\") and @TypeLabel."
-  }
 }

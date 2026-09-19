@@ -10,4 +10,13 @@ dependencies {
   implementation(project(":moshi-sealed:runtime"))
   implementation(libs.moshi.adapters)
   implementation(libs.kotlin.reflect)
+
+  testImplementation(libs.junit)
+  testImplementation(libs.truth)
+  testImplementation(libs.moshi.kotlin)
+  testImplementation(testFixtures(project(":moshi-sealed:runtime")))
+}
+
+tasks.test {
+  testLogging { events("PASSED", "FAILED", "SKIPPED") }
 }

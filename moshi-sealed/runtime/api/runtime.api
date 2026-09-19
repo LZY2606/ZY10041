@@ -33,3 +33,166 @@ public final class dev/zacsweers/moshix/sealed/runtime/internal/Util {
 	public static final fun fallbackAdapter (Lcom/squareup/moshi/Moshi;Ljava/lang/Class;)Lcom/squareup/moshi/JsonAdapter;
 }
 
+public final class dev/zacsweers/moshix/sealed/runtime/model/LabeledSubtype {
+	public fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;Ljava/util/List;)V
+	public final fun component1 ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;Ljava/util/List;)Ldev/zacsweers/moshix/sealed/runtime/model/LabeledSubtype;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/LabeledSubtype;Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/LabeledSubtype;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLabels ()Ljava/util/List;
+	public final fun getProbe ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;
+	public fun hashCode ()I
+	public final fun isObject ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe {
+	public abstract fun getDisplayName ()Ljava/lang/String;
+	public abstract fun getHandle ()Ljava/lang/Object;
+	public abstract fun getHasDefaultNull ()Z
+	public abstract fun getHasDefaultObject ()Z
+	public abstract fun getHasFallbackJsonAdapter ()Z
+	public abstract fun getHasNestedSealed ()Z
+	public abstract fun getHasTypeParameters ()Z
+	public abstract fun getIdentity ()Ljava/lang/Object;
+	public abstract fun getJsonClassLabelKey ()Ljava/lang/String;
+	public abstract fun getObjectInstance ()Ljava/lang/Object;
+	public abstract fun getSealedSubtypes ()Ljava/util/List;
+	public abstract fun getSupertypeLabelKeys ()Ljava/util/List;
+	public abstract fun getTypeLabel ()Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelData;
+	public abstract fun isObject ()Z
+	public abstract fun isSealed ()Z
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedError {
+	public fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;Ljava/lang/String;Ljava/util/List;)V
+	public synthetic fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;Ljava/lang/String;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;Ljava/lang/String;Ljava/util/List;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedError;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/SealedError;Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCode ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getNodes ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun render ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode : java/lang/Enum {
+	public static final field CONFLICTING_DEFAULTS Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field DEFAULT_OBJECT_NOT_OBJECT Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field DUPLICATE_ALTERNATE_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field DUPLICATE_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field GENERIC_SUBTYPE Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field MISSING_SEALED_SUPERTYPE Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field MISSING_TYPE_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field MULTIPLE_DEFAULT_OBJECTS Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field NESTED_SEALED_SAME_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field REDUNDANT_SEALED_GENERATOR Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static final field TYPE_LABEL_WITH_SEALED_GENERATOR Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+	public static fun values ()[Ldev/zacsweers/moshix/sealed/runtime/model/SealedErrorCode;
+}
+
+public abstract interface class dev/zacsweers/moshix/sealed/runtime/model/SealedFallback {
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedFallback$DefaultObject : dev/zacsweers/moshix/sealed/runtime/model/SealedFallback {
+	public fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;)V
+	public final fun component1 ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;
+	public final fun copy (Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback$DefaultObject;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback$DefaultObject;Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback$DefaultObject;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProbe ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedFallback$FallbackAdapter : dev/zacsweers/moshix/sealed/runtime/model/SealedFallback {
+	public static final field INSTANCE Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback$FallbackAdapter;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedFallback$None : dev/zacsweers/moshix/sealed/runtime/model/SealedFallback {
+	public static final field INSTANCE Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback$None;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedFallback$NullValue : dev/zacsweers/moshix/sealed/runtime/model/SealedFallback {
+	public static final field INSTANCE Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback$NullValue;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelKt {
+	public static final fun sealedLabelKey (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public abstract interface class dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult {
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Invalid : dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Invalid;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Invalid;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Invalid;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrors ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Valid : dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult {
+	public fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;)V
+	public final fun component1 ()Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;
+	public final fun copy (Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Valid;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Valid;Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Valid;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getModel ()Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelValidator {
+	public static final field INSTANCE Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelValidator;
+	public final fun validate (Ldev/zacsweers/moshix/sealed/runtime/model/SealedClassProbe;Ljava/lang/String;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/TypeLabelData {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;)Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelData;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelData;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelData;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAlternateLabels ()Ljava/util/List;
+	public final fun getLabel ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback;)Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;
+	public static synthetic fun copy$default (Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;Ljava/lang/String;Ljava/util/List;Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback;ILjava/lang/Object;)Ldev/zacsweers/moshix/sealed/runtime/model/ValidatedSealedModel;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFallback ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedFallback;
+	public final fun getLabelKey ()Ljava/lang/String;
+	public final fun getLabeledSubtypes ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
