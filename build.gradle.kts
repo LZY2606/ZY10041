@@ -20,6 +20,9 @@ plugins {
 apiValidation {
   ignoredProjects +=
     listOf(
+      /* :moshi-sealed: aggregate + test fixtures */
+      "moshi-sealed",
+      "fixtures",
       /* :moshi-ir: */
       "moshi-kotlin-tests",
       "extra-moshi-test-module",

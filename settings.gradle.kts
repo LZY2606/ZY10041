@@ -63,6 +63,7 @@ include(
   ":moshi-ir:moshi-kotlin-tests:extra-moshi-test-module",
   ":moshi-metadata-reflect",
   ":moshi-sealed:codegen",
+  ":moshi-sealed:fixtures",
   ":moshi-sealed:java-sealed-reflect",
   ":moshi-sealed:metadata-reflect",
   ":moshi-sealed:reflect",

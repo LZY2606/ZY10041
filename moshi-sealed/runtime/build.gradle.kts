@@ -12,3 +12,7 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.truth)
 }
+
+tasks.test {
+  testLogging { events("passed", "failed", "skipped") }
+}

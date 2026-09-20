@@ -108,6 +108,7 @@ class MoshiSealedSymbolProcessorProviderTest {
 
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
+    assertThat(result.messages).contains("[MOSHIX_SEALED_DUPLICATE_LABEL]")
     assertThat(result.messages).contains("Duplicate label")
   }
 
@@ -133,7 +134,65 @@ class MoshiSealedSymbolProcessorProviderTest {
 
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
+    assertThat(result.messages).contains("[MOSHIX_SEALED_DUPLICATE_ALTERNATE_LABEL]")
     assertThat(result.messages).contains("Duplicate alternate label")
+  }
+
+  @Test
+  fun missingTypeLabel() {
+    val source =
+      kotlin(
+        "BaseType.kt",
+        """
+      package test
+      import com.squareup.moshi.JsonClass
+      import dev.zacsweers.moshix.sealed.annotations.TypeLabel
+
+      @JsonClass(generateAdapter = true, generator = "sealed:type")
+      sealed class BaseType {
+        @TypeLabel("a")
+        class TypeA : BaseType()
+        class TypeB : BaseType()
+      }
+    """,
+      )
+
+    val result = compile(source)
+    assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
+    assertThat(result.messages).contains("[MOSHIX_SEALED_MISSING_TYPE_LABEL]")
+    assertThat(result.messages)
+      .contains("Sealed subtypes must be annotated with @TypeLabel to define their label")
+    // Compile-time errors must carry a source location
+    assertThat(result.messages).containsMatch("BaseType\\.kt:\\d+")
+  }
+
+  @Test
+  fun redundantNestedSealedLabel() {
+    val source =
+      kotlin(
+        "BaseType.kt",
+        """
+      package test
+      import com.squareup.moshi.JsonClass
+      import dev.zacsweers.moshix.sealed.annotations.TypeLabel
+
+      @JsonClass(generateAdapter = true, generator = "sealed:type")
+      sealed class BaseType {
+        @TypeLabel("a")
+        class TypeA : BaseType()
+        @JsonClass(generateAdapter = false, generator = "sealed:type")
+        sealed class TypeB : BaseType() {
+          @TypeLabel("b")
+          class TypeBImpl : TypeB()
+        }
+      }
+    """,
+      )
+
+    val result = compile(source)
+    assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
+    assertThat(result.messages).contains("[MOSHIX_SEALED_REDUNDANT_NESTED_LABEL]")
+    assertThat(result.messages).contains("redundantly annotated")
   }
 
   @Test
@@ -158,7 +217,8 @@ class MoshiSealedSymbolProcessorProviderTest {
 
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
-    assertThat(result.messages).contains("Moshi-sealed subtypes cannot be generic.")
+    assertThat(result.messages).contains("[MOSHIX_SEALED_GENERIC_SUBTYPE]")
+    assertThat(result.messages).contains("Moshi-sealed subtypes cannot be generic")
   }
 
   @Test
@@ -198,7 +258,9 @@ class MoshiSealedSymbolProcessorProviderTest {
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
     assertThat(result.messages)
-      .contains("Only one of @DefaultNull or @FallbackJsonAdapter can be used at a time")
+      .contains("[MOSHIX_SEALED_CONFLICTING_DEFAULTS]")
+    assertThat(result.messages)
+      .contains("Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter can be used at a time")
   }
 
   @Test
@@ -226,7 +288,10 @@ class MoshiSealedSymbolProcessorProviderTest {
 
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
-    assertThat(result.messages).contains("Cannot have both @DefaultNull and @DefaultObject")
+    assertThat(result.messages)
+      .contains("[MOSHIX_SEALED_CONFLICTING_DEFAULTS]")
+    assertThat(result.messages)
+      .contains("Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter can be used at a time")
   }
 
   @Test
@@ -267,9 +332,9 @@ class MoshiSealedSymbolProcessorProviderTest {
     val result = compile(source)
     assertThat(result.exitCode).isEqualTo(ExitCode.COMPILATION_ERROR)
     assertThat(result.messages)
-      .contains(
-        "Only one of @DefaultObject, @DefaultNull, or @FallbackJsonAdapter can be used at a time"
-      )
+      .contains("[MOSHIX_SEALED_CONFLICTING_DEFAULTS]")
+    assertThat(result.messages)
+      .contains("Only one of @DefaultNull, @DefaultObject, and @FallbackJsonAdapter can be used at a time")
   }
 
   @Test

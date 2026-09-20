@@ -33,3 +33,101 @@ public final class dev/zacsweers/moshix/sealed/runtime/internal/Util {
 	public static final fun fallbackAdapter (Lcom/squareup/moshi/Moshi;Ljava/lang/Class;)Lcom/squareup/moshi/JsonAdapter;
 }
 
+public final class dev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy : java/lang/Enum {
+	public static final field DEFAULT_OBJECT Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+	public static final field FALLBACK_ADAPTER Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+	public static final field NONE Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+	public static final field NULL Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+	public static fun values ()[Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModel {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;Ldev/zacsweers/moshix/sealed/runtime/model/SealedTypeDescription;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;Ldev/zacsweers/moshix/sealed/runtime/model/SealedTypeDescription;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDefaultObject ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedTypeDescription;
+	public final fun getDefaultStrategy ()Ldev/zacsweers/moshix/sealed/runtime/model/DefaultStrategy;
+	public final fun getEntries ()Ljava/util/List;
+	public final fun getLabelKey ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModel$LabelEntry {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;ZLjava/lang/Object;)V
+	public final fun getLabels ()Ljava/util/List;
+	public final fun getOrigin ()Ljava/lang/Object;
+	public final fun getTypeName ()Ljava/lang/String;
+	public final fun isObject ()Z
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelError {
+	public fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Object;)V
+	public final fun getCode ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getOrigin ()Ljava/lang/Object;
+	public final fun getTypeName ()Ljava/lang/String;
+	public final fun render ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode : java/lang/Enum {
+	public static final field CONFLICTING_DEFAULTS Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field DEFAULT_OBJECT_NOT_OBJECT Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field DUPLICATE_ALTERNATE_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field DUPLICATE_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field GENERIC_SUBTYPE Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field MISSING_SEALED_PARENT Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field MISSING_TYPE_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field MULTIPLE_DEFAULT_OBJECTS Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field NESTED_SEALED_PARENT_LABEL_CONFLICT Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field REDUNDANT_NESTED_LABEL Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static final field TYPE_LABEL_WITH_JSON_CLASS Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public final fun getCode ()Ljava/lang/String;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+	public static fun values ()[Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelErrorCode;
+}
+
+public abstract interface class dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult {
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Invalid : dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult {
+	public fun <init> (Ljava/util/List;)V
+	public final fun getErrors ()Ljava/util/List;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult$Valid : dev/zacsweers/moshix/sealed/runtime/model/SealedModelResult {
+	public fun <init> (Ldev/zacsweers/moshix/sealed/runtime/model/SealedModel;)V
+	public final fun getModel ()Ldev/zacsweers/moshix/sealed/runtime/model/SealedModel;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedModelValidator {
+	public static final field INSTANCE Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelValidator;
+	public final fun validate (Ldev/zacsweers/moshix/sealed/runtime/model/SealedTypeDescription;)Ldev/zacsweers/moshix/sealed/runtime/model/SealedModelResult;
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/SealedTypeDescription {
+	public fun <init> (Ljava/lang/String;ZZZLjava/lang/String;Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelInfo;ZZZZLjava/lang/String;Ljava/util/List;Ljava/lang/Object;)V
+	public synthetic fun <init> (Ljava/lang/String;ZZZLjava/lang/String;Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelInfo;ZZZZLjava/lang/String;Ljava/util/List;Ljava/lang/Object;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getHasDefaultNull ()Z
+	public final fun getHasDefaultObject ()Z
+	public final fun getHasFallbackAdapter ()Z
+	public final fun getHasNestedSealed ()Z
+	public final fun getLabelKey ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getOrigin ()Ljava/lang/Object;
+	public final fun getParentLabelKey ()Ljava/lang/String;
+	public final fun getSubclasses ()Ljava/util/List;
+	public final fun getTypeLabel ()Ldev/zacsweers/moshix/sealed/runtime/model/TypeLabelInfo;
+	public final fun isGeneric ()Z
+	public final fun isObject ()Z
+	public final fun isSealed ()Z
+}
+
+public final class dev/zacsweers/moshix/sealed/runtime/model/TypeLabelInfo {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAlternateLabels ()Ljava/util/List;
+	public final fun getLabel ()Ljava/lang/String;
+}
+

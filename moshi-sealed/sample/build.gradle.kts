@@ -16,6 +16,7 @@ dependencies {
   kspTest(libs.moshi.codegen)
 
   testImplementation(libs.moshi.kotlin)
+  testImplementation(project(":moshi-sealed:fixtures"))
   testImplementation(project(":moshi-sealed:reflect"))
   testImplementation(project(":moshi-sealed:metadata-reflect"))
   testImplementation(project(":moshi-adapters"))
@@ -26,6 +27,10 @@ dependencies {
 val generatedAnnotation = "javax.annotation.processing.Generated"
 
 ksp { arg("moshi.generated", generatedAnnotation) }
+
+tasks.test {
+  testLogging { events("passed", "failed", "skipped") }
+}
 
 kotlin {
   compilerOptions {

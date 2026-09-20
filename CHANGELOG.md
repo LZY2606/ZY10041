@@ -5,6 +5,11 @@ Changelog
 --------------
 
 - Build against Kotlin `2.4.20`.
+- [moshi-sealed] **Enhancement**: Unify sealed model validation across the codegen, reflect, and
+  metadata-reflect entry points behind a shared, backend-agnostic `SealedModelValidator` in
+  `moshi-sealed-runtime`. Invalid models now report stable error codes (e.g.
+  `MOSHIX_SEALED_DUPLICATE_LABEL`) with identical core messages on every entry point. See
+  `moshi-sealed/SEALED_MODEL.md` for the design notes.
 
 0.37.0
 ------

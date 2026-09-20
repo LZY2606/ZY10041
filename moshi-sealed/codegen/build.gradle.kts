@@ -12,6 +12,7 @@ tasks.test {
   // KSP2 needs more memory to run
   minHeapSize = "2096m"
   maxHeapSize = "2096m"
+  testLogging { events("passed", "failed", "skipped") }
   // --add-opens for kapt to work. KGP covers this for us but local JVMs in tests do not
   jvmArgs(
     "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
